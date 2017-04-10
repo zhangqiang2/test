@@ -1,0 +1,755 @@
+From 4ef030170d5543a947b4036dcdbfba5a4f13d787 Mon Sep 17 00:00:00 2001
+From: 10204497 <zhao.hongtao@zte.com.cn>
+Date: Sat, 8 Apr 2017 17:00:01 +0800
+Subject: [PATCH 1/1] RANGER-1503
+
+---
+ .../authentication/RangerAuthFailureHandler.java   |  283 +++++++++++---------
+ .../internationalization/messages.properties       |   26 ++
+ .../internationalization/messages_cs_CZ.properties |   26 ++
+ .../internationalization/messages_de.properties    |   26 ++
+ .../internationalization/messages_es_ES.properties |   26 ++
+ .../internationalization/messages_fr.properties    |   26 ++
+ .../internationalization/messages_it.properties    |   26 ++
+ .../internationalization/messages_ko_KR.properties |   26 ++
+ .../internationalization/messages_lt.properties    |   26 ++
+ .../internationalization/messages_pl.properties    |   26 ++
+ .../internationalization/messages_pt_BR.properties |   26 ++
+ .../internationalization/messages_pt_PT.properties |   26 ++
+ .../internationalization/messages_uk_UA.properties |   26 ++
+ .../internationalization/messages_zh_CN.properties |   26 ++
+ 14 files changed, 500 insertions(+), 121 deletions(-)
+ create mode 100644 security-admin/src/main/resources/internationalization/messages.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_cs_CZ.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_de.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_es_ES.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_fr.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_it.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_ko_KR.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_lt.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_pl.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_pt_BR.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_pt_PT.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_uk_UA.properties
+ create mode 100644 security-admin/src/main/resources/internationalization/messages_zh_CN.properties
+
+diff --git a/security-admin/src/main/java/org/apache/ranger/security/web/authentication/RangerAuthFailureHandler.java b/security-admin/src/main/java/org/apache/ranger/security/web/authentication/RangerAuthFailureHandler.java
+index 580b6bc..ef6e3d2 100644
+--- a/security-admin/src/main/java/org/apache/ranger/security/web/authentication/RangerAuthFailureHandler.java
++++ b/security-admin/src/main/java/org/apache/ranger/security/web/authentication/RangerAuthFailureHandler.java
+@@ -1,121 +1,162 @@
+-/*
+- * Licensed to the Apache Software Foundation (ASF) under one
+- * or more contributor license agreements.  See the NOTICE file
+- * distributed with this work for additional information
+- * regarding copyright ownership.  The ASF licenses this file
+- * to you under the Apache License, Version 2.0 (the
+- * "License"); you may not use this file except in compliance
+- * with the License.  You may obtain a copy of the License at
+- *
+- * http://www.apache.org/licenses/LICENSE-2.0
+- *
+- * Unless required by applicable law or agreed to in writing,
+- * software distributed under the License is distributed on an
+- * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+- * KIND, either express or implied.  See the License for the
+- * specific language governing permissions and limitations
+- * under the License.
+- */
+-
+- /**
+- *
+- */
+-package org.apache.ranger.security.web.authentication;
+-
+-import java.io.IOException;
+-
+-import javax.servlet.ServletException;
+-import javax.servlet.http.HttpServletRequest;
+-import javax.servlet.http.HttpServletResponse;
+-
+-import org.apache.log4j.Logger;
+-import org.apache.ranger.common.JSONUtil;
+-import org.apache.ranger.common.PropertiesUtil;
+-import org.apache.ranger.view.VXResponse;
+-import org.springframework.beans.factory.annotation.Autowired;
+-import org.springframework.security.core.AuthenticationException;
+-import org.springframework.security.web.authentication.ExceptionMappingAuthenticationFailureHandler;
+-
+-/**
+- *
+- *
+- */
+-public class RangerAuthFailureHandler extends
+-ExceptionMappingAuthenticationFailureHandler {
+-    private static final Logger logger = Logger.getLogger(RangerAuthFailureHandler.class);
+-
+-    String ajaxLoginfailurePage = null;
+-
+-    @Autowired
+-    JSONUtil jsonUtil;
+-
+-    public RangerAuthFailureHandler() {
+-	super();
+-	if (ajaxLoginfailurePage == null) {
+-		ajaxLoginfailurePage = PropertiesUtil.getProperty("ranger.ajax.auth.failure.page", "/ajax_failure.jsp");
+-	}
+-    }
+-
+-    /*
+-     * (non-Javadoc)
+-     *
+-     * @see org.springframework.security.web.authentication.
+-     * ExceptionMappingAuthenticationFailureHandler
+-     * #onAuthenticationFailure(javax.servlet.http.HttpServletRequest,
+-     * javax.servlet.http.HttpServletResponse,
+-     * org.springframework.security.core.AuthenticationException)
+-     */
+-    @Override
+-    public void onAuthenticationFailure(HttpServletRequest request,
+-	    HttpServletResponse response, AuthenticationException exception)
+-    throws IOException, ServletException {
+-	String ajaxRequestHeader = request.getHeader("X-Requested-With");
+-	if (logger.isDebugEnabled()) {
+-	    logger.debug("commence() X-Requested-With=" + ajaxRequestHeader);
+-	}
+-	
+-		response.setContentType("application/json;charset=UTF-8");
+-		response.setHeader("Cache-Control", "no-cache");
+-		response.setHeader("X-Frame-Options", "DENY");
+-		String jsonResp = "";
+-		try {
+-			String msg = exception.getMessage();
+-			VXResponse vXResponse = new VXResponse();
+-			if(msg!=null && !msg.isEmpty()){
+-				if("Bad credentials".equalsIgnoreCase(msg)){
+-					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
+-					vXResponse.setMsgDesc("The username or password you entered is incorrect..");
+-				}else if(msg.contains("Could not get JDBC Connection; nested exception is java.sql.SQLException: Connections could not be acquired from the underlying database!")){
+-					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
+-					vXResponse.setMsgDesc("Unable to connect to DB..");
+-				}else if(msg.contains("Communications link failure")){
+-					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
+-					vXResponse.setMsgDesc("Unable to connect to DB..");
+-				}else if("User is disabled".equalsIgnoreCase(msg)){
+-					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
+-					vXResponse.setMsgDesc("The username or password you entered is disable..");
+-				}
+-			}
+-			jsonResp = jsonUtil.writeObjectAsString(vXResponse);
+-			response.getWriter().write(jsonResp);
+-			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+-		} catch (IOException e) {
+-			logger.info("Error while writing JSON in HttpServletResponse");
+-		}
+-	
+-	if (ajaxRequestHeader != null && "XMLHttpRequest".equalsIgnoreCase(ajaxRequestHeader)) {
+-//	    if (logger.isDebugEnabled()) {
+-//		logger.debug("Forwarding AJAX login request failure to "
+-//			+ ajaxLoginfailurePage);
+-//	    }
+-//	    request.getRequestDispatcher(ajaxLoginfailurePage).forward(request,
+-//		    response);
+-		if (logger.isDebugEnabled()) {
+-			logger.debug("Sending login failed response : " + jsonResp);
+-		}
+-	}// else {
+-//	    super.onAuthenticationFailure(request, response, exception);
+-	//}
+-    }
+-
+-}
++/*
++ * Licensed to the Apache Software Foundation (ASF) under one
++ * or more contributor license agreements.  See the NOTICE file
++ * distributed with this work for additional information
++ * regarding copyright ownership.  The ASF licenses this file
++ * to you under the Apache License, Version 2.0 (the
++ * "License"); you may not use this file except in compliance
++ * with the License.  You may obtain a copy of the License at
++ *
++ * http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing,
++ * software distributed under the License is distributed on an
++ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
++ * KIND, either express or implied.  See the License for the
++ * specific language governing permissions and limitations
++ * under the License.
++ */
++
++ /**
++ *
++ */
++package org.apache.ranger.security.web.authentication;
++
++import java.io.BufferedInputStream;
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.FileNotFoundException;
++import java.io.IOException;
++import java.io.InputStream;
++import java.util.HashMap;
++import java.util.Locale;
++import java.util.Map;
++import java.util.Properties;
++
++import javax.servlet.ServletException;
++import javax.servlet.http.HttpServletRequest;
++import javax.servlet.http.HttpServletResponse;
++
++import org.apache.log4j.Logger;
++import org.apache.ranger.common.JSONUtil;
++import org.apache.ranger.common.PropertiesUtil;
++import org.apache.ranger.view.VXResponse;
++import org.springframework.beans.factory.annotation.Autowired;
++import org.springframework.context.i18n.LocaleContextHolder;
++import org.springframework.security.core.AuthenticationException;
++import org.springframework.security.web.authentication.ExceptionMappingAuthenticationFailureHandler;
++
++/**
++ *
++ *
++ */
++public class RangerAuthFailureHandler extends
++ExceptionMappingAuthenticationFailureHandler {
++    private static final Logger logger = Logger.getLogger(RangerAuthFailureHandler.class);
++	private Locale defaultLocale;
++    String ajaxLoginfailurePage = null;
++	private static Map<String, String> springPropertiesMap = new HashMap<String, String>();
++	@Autowired
++	JSONUtil jsonUtil;
++
++	public RangerAuthFailureHandler() {
++		super();
++		if (ajaxLoginfailurePage == null) {
++			ajaxLoginfailurePage = PropertiesUtil.getProperty("ranger.ajax.auth.failure.page", "/ajax_failure.jsp");
++		}
++		if (null == this.defaultLocale) {
++			this.defaultLocale = LocaleContextHolder.getLocale();
++		}
++		Properties pps = new Properties();
++		String languageCountry = Locale.getDefault().toString();
++		String filePath = null;
++		String filenameProfix = "messages";
++		String fileNameSuffix = ".properties";
++		if ("en_US".equals(languageCountry)) {
++			filePath = getClass().getResource("/").getFile().toString() + "internationalization" + File.separator
++					+ filenameProfix + fileNameSuffix;
++		} else {
++			filePath = getClass().getResource("/").getFile().toString() + "internationalization" + File.separator
++					+ filenameProfix + "_" + languageCountry + fileNameSuffix;
++		}
++		try {
++			InputStream in = new BufferedInputStream(new FileInputStream(filePath));
++			pps.load(in);
++		} catch (FileNotFoundException e) {
++			logger.error("File not found : ", e);
++		} catch (IOException e) {
++			logger.error("Unable to get Spring properties file : User.getCurrent() threw IOException", e);
++		}
++		if (pps != null) {
++			springPropertiesMap.put("AbstractUserDetailsAuthenticationProvider.badCredentials",
++					pps.getProperty("AbstractUserDetailsAuthenticationProvider.badCredentials"));
++			springPropertiesMap.put("AbstractUserDetailsAuthenticationProvider.disabled",
++					pps.getProperty("AbstractUserDetailsAuthenticationProvider.disabled"));
++		}
++	}
++
++    /*
++     * (non-Javadoc)
++     *
++     * @see org.springframework.security.web.authentication.
++     * ExceptionMappingAuthenticationFailureHandler
++     * #onAuthenticationFailure(javax.servlet.http.HttpServletRequest,
++     * javax.servlet.http.HttpServletResponse,
++     * org.springframework.security.core.AuthenticationException)
++     */
++    @Override
++    public void onAuthenticationFailure(HttpServletRequest request,
++	    HttpServletResponse response, AuthenticationException exception)
++    throws IOException, ServletException {
++	String ajaxRequestHeader = request.getHeader("X-Requested-With");
++	if (logger.isDebugEnabled()) {
++	    logger.debug("commence() X-Requested-With=" + ajaxRequestHeader);
++	}
++		response.setContentType("application/json;charset=UTF-8");
++		response.setHeader("Cache-Control", "no-cache");
++		response.setHeader("X-Frame-Options", "DENY");
++		String jsonResp = "";
++		try {
++			String msg = exception.getMessage();
++			VXResponse vXResponse = new VXResponse();
++			if (msg != null && !msg.isEmpty()) {
++				if (springPropertiesMap.get("AbstractUserDetailsAuthenticationProvider.badCredentials")
++						.equalsIgnoreCase(msg)) {
++					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
++					vXResponse.setMsgDesc("The username or password you entered is incorrect..");
++					logger.info("Error Message : " + msg);
++				} else if (msg
++						.contains("Could not get JDBC Connection; nested exception is java.sql.SQLException: Connections could not be acquired from the underlying database!")) {
++					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
++					vXResponse.setMsgDesc("Unable to connect to DB..");
++				} else if (msg.contains("Communications link failure")) {
++					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
++					vXResponse.setMsgDesc("Unable to connect to DB..");
++				} else if (springPropertiesMap.get("AbstractUserDetailsAuthenticationProvider.disabled")
++						.equalsIgnoreCase(msg)) {
++					vXResponse.setStatusCode(HttpServletResponse.SC_UNAUTHORIZED);
++					vXResponse.setMsgDesc("The username or password you entered is disable..");
++				}
++			}
++			jsonResp = jsonUtil.writeObjectAsString(vXResponse);
++			response.getWriter().write(jsonResp);
++			response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
++		} catch (IOException e) {
++			logger.info("Error while writing JSON in HttpServletResponse");
++		}
++
++		if (ajaxRequestHeader != null && "XMLHttpRequest".equalsIgnoreCase(ajaxRequestHeader)) {
++			// if (logger.isDebugEnabled()) {
++			// logger.debug("Forwarding AJAX login request failure to "
++			// + ajaxLoginfailurePage);
++			// }
++			// request.getRequestDispatcher(ajaxLoginfailurePage).forward(request,
++			// response);
++			if (logger.isDebugEnabled()) {
++				logger.debug("Sending login failed response : " + jsonResp);
++			}
++		}// else {
++			// super.onAuthenticationFailure(request, response, exception);
++		// }
++	}
++}
+diff --git a/security-admin/src/main/resources/internationalization/messages.properties b/security-admin/src/main/resources/internationalization/messages.properties
+new file mode 100644
+index 0000000..d8b92e0
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Access is denied
++AbstractSecurityInterceptor.authenticationNotFound=An Authentication object was not found in the SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=Bad credentials
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=User credentials have expired
++AbstractUserDetailsAuthenticationProvider.disabled=User is disabled
++AbstractUserDetailsAuthenticationProvider.expired=User account has expired
++AbstractUserDetailsAuthenticationProvider.locked=User account is locked
++AbstractUserDetailsAuthenticationProvider.onlySupports=Only UsernamePasswordAuthenticationToken is supported
++AccountStatusUserDetailsChecker.credentialsExpired=User credentials have expired
++AccountStatusUserDetailsChecker.disabled=User is disabled
++AccountStatusUserDetailsChecker.expired=User account has expired
++AccountStatusUserDetailsChecker.locked=User account is locked
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_cs_CZ.properties b/security-admin/src/main/resources/internationalization/messages_cs_CZ.properties
+new file mode 100644
+index 0000000..f0e60a0
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_cs_CZ.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=P\u0159\u00EDstup odep\u0159en
++AbstractSecurityInterceptor.authenticationNotFound=Nebyl nalezen \u017E\u00E1dn\u00FD Authentication objekt v SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=\u0160patn\u00E9 p\u0159ihla\u0161ovac\u00ED \u00FAdaje
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Platnost u\u017Eivatelsk\u00E9ho hesla vypr\u0161ela
++AbstractUserDetailsAuthenticationProvider.disabled=U\u017Eivatelsk\u00FD \u00FA\u010Det nen\u00ED aktivn\u00ED
++AbstractUserDetailsAuthenticationProvider.expired=Platnost u\u017Eivatelsk\u00E9ho \u00FA\u010Dtu vypr\u0161ela
++AbstractUserDetailsAuthenticationProvider.locked=U\u017Eivatelsk\u00FD \u00FA\u010Det je uzam\u010Den
++AbstractUserDetailsAuthenticationProvider.onlySupports=Je podporov\u00E1n pouze UsernamePasswordAuthenticationToken
++AccountStatusUserDetailsChecker.credentialsExpired=Platnost u\u017Eivatelsk\u00E9ho hesla vypr\u0161ela
++AccountStatusUserDetailsChecker.disabled=U\u017Eivatelsk\u00FD \u00FA\u010Det nen\u00ED aktivn\u00ED
++AccountStatusUserDetailsChecker.expired=Platnost u\u017Eivatelsk\u00E9ho \u00FA\u010Dtu vypr\u0161ela
++AccountStatusUserDetailsChecker.locked=U\u017Eivatelsk\u00FD \u00FA\u010Det je uzam\u010Den
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_de.properties b/security-admin/src/main/resources/internationalization/messages_de.properties
+new file mode 100644
+index 0000000..1f818ca
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_de.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Zugriff verweigert
++AbstractSecurityInterceptor.authenticationNotFound=Im SecurityContext wurde keine Authentifikation gefunden
++AbstractUserDetailsAuthenticationProvider.badCredentials=Ung\u00FCltige Benutzerberechtigungen
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Die G\u00FCltigkeit der Benutzerberechtigungen ist abgelaufen
++AbstractUserDetailsAuthenticationProvider.disabled=Der Benutzer ist deaktiviert
++AbstractUserDetailsAuthenticationProvider.expired=Die G\u00FCltigkeit des Benutzerkontos ist abgelaufen
++AbstractUserDetailsAuthenticationProvider.locked=Das Benutzerkonto ist gesperrt
++AbstractUserDetailsAuthenticationProvider.onlySupports=Nur UsernamePasswordAuthenticationToken wird unterst\u00FCtzt
++AccountStatusUserDetailsChecker.credentialsExpired=Die G\u00FCltigkeit der Benutzerberechtigungen ist abgelaufen
++AccountStatusUserDetailsChecker.disabled=Der Benutzer ist deaktiviert
++AccountStatusUserDetailsChecker.expired=Die G\u00FCltigkeit des Benutzerkontos ist abgelaufen
++AccountStatusUserDetailsChecker.locked=Das Benutzerkonto ist gesperrt
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_es_ES.properties b/security-admin/src/main/resources/internationalization/messages_es_ES.properties
+new file mode 100644
+index 0000000..79d877c
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_es_ES.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Acceso denegado
++AbstractSecurityInterceptor.authenticationNotFound=El objeto Authentication no ha sido encontrado en el SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=Credenciales err\u00F3neas
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Las credenciales del usuario han expirado
++AbstractUserDetailsAuthenticationProvider.disabled=El usuario est\u00E1 deshabilitado
++AbstractUserDetailsAuthenticationProvider.expired=La cuenta del usuario ha expirado
++AbstractUserDetailsAuthenticationProvider.locked=La cuenta del usuario est\u00E1 bloqueada
++AbstractUserDetailsAuthenticationProvider.onlySupports=S\u00F3lo UsernamePasswordAuthenticationToken es soportada
++AccountStatusUserDetailsChecker.credentialsExpired=Las credenciales del usuario han expirado
++AccountStatusUserDetailsChecker.disabled=El usuario est\u00E1 deshabilitado
++AccountStatusUserDetailsChecker.expired=La cuenta del usuario ha expirado
++AccountStatusUserDetailsChecker.locked=La cuenta del usuario est\u00E1 bloqueada
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_fr.properties b/security-admin/src/main/resources/internationalization/messages_fr.properties
+new file mode 100644
+index 0000000..8ed1a11
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_fr.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Acc\u00E8s refus\u00E9
++AbstractSecurityInterceptor.authenticationNotFound=Aucun objet Authentication n'a \u00E9t\u00E9 trouv\u00E9 dans le SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=Les cr\u00E9ances sont erron\u00E9es
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Les cr\u00E9ances de l'utilisateur ont expir\u00E9
++AbstractUserDetailsAuthenticationProvider.disabled=Le compte utilisateur est d\u00E9sactiv\u00E9
++AbstractUserDetailsAuthenticationProvider.expired=Le compte utilisateur a expir\u00E9
++AbstractUserDetailsAuthenticationProvider.locked=Le compte utilisateur est bloqu\u00E9
++AbstractUserDetailsAuthenticationProvider.onlySupports=Seul UsernamePasswordAuthenticationToken est pris en charge
++AccountStatusUserDetailsChecker.credentialsExpired=Les cr\u00E9ances de l'utilisateur ont expir\u00E9
++AccountStatusUserDetailsChecker.disabled=Le compte utilisateur est d\u00E9sactiv\u00E9
++AccountStatusUserDetailsChecker.expired=Le compte utilisateur a expir\u00E9
++AccountStatusUserDetailsChecker.locked=Le compte utilisateur est bloqu\u00E9
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_it.properties b/security-admin/src/main/resources/internationalization/messages_it.properties
+new file mode 100644
+index 0000000..14d33eb
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_it.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Accesso negato
++AbstractSecurityInterceptor.authenticationNotFound=Nessuna autenticazione trovata dentro il Security Context
++AbstractUserDetailsAuthenticationProvider.badCredentials=Credenziali non valide
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Credenziali dell'utente scadute
++AbstractUserDetailsAuthenticationProvider.disabled=Utente disabilitato
++AbstractUserDetailsAuthenticationProvider.expired=Account dell'utente scadute
++AbstractUserDetailsAuthenticationProvider.locked=Account dell'utente bloccato
++AbstractUserDetailsAuthenticationProvider.onlySupports=Solo UsernamePasswordAuthenticationToken \u00E8 supportata
++AccountStatusUserDetailsChecker.credentialsExpired=Credenziali dell'utente scadute
++AccountStatusUserDetailsChecker.disabled=Utente disabilitato
++AccountStatusUserDetailsChecker.expired=Account dell'utente scaduto
++AccountStatusUserDetailsChecker.locked=Account dell'utente bloccato
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_ko_KR.properties b/security-admin/src/main/resources/internationalization/messages_ko_KR.properties
+new file mode 100644
+index 0000000..8bd174f
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_ko_KR.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractSecurityInterceptor.authenticationNotFound=SecurityContext\uC5D0\uC11C Authentication \uAC1D\uCCB4\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.
++AbstractUserDetailsAuthenticationProvider.badCredentials=\uBE44\uBC00\uBC88\uD638(credential)\uAC00 \uB9DE\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4.
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=\uBE44\uBC00\uBC88\uD638(credential)\uC758 \uC720\uD6A8 \uAE30\uAC04\uC774 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
++AbstractUserDetailsAuthenticationProvider.disabled=\uC874\uC7AC\uD558\uC9C0 \uC54A\uB294 \uC0AC\uC6A9\uC790 \uC785\uB2C8\uB2E4.
++AbstractUserDetailsAuthenticationProvider.expired=\uC0AC\uC6A9\uC790 \uACC4\uC815\uC758 \uC720\uD6A8 \uAE30\uAC04\uC774 \uB9CC\uB8CC \uB418\uC5C8\uC2B5\uB2C8\uB2E4.
++AbstractUserDetailsAuthenticationProvider.locked=\uC0AC\uC6A9\uC790 \uACC4\uC815\uC774 \uC7A0\uACA8 \uC788\uC2B5\uB2C8\uB2E4.
++AbstractUserDetailsAuthenticationProvider.onlySupports=UsernamePasswordAuthenticationToken\uB9CC \uC9C0\uC6D0\uD569\uB2C8\uB2E4.
++AccountStatusUserDetailsChecker.credentialsExpired=\uBE44\uBC00\uBC88\uD638\uC758 \uC720\uD6A8 \uAE30\uAC04\uC774 \uB9CC\uB8CC\uB418\uC5C8\uC2B5\uB2C8\uB2E4.
++AccountStatusUserDetailsChecker.disabled=\uC0AC\uC6A9\uC790 \uACC4\uC815\uC744 \uC0AC\uC6A9\uD560 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.
++AccountStatusUserDetailsChecker.expired=\uC0AC\uC6A9\uC790 \uACC4\uC815\uC758 \uC720\uD6A8 \uAE30\uAC04\uC774 \uB9CC\uB8CC \uB418\uC5C8\uC2B5\uB2C8\uB2E4.
++AccountStatusUserDetailsChecker.locked=\uC0AC\uC6A9\uC790 \uACC4\uC815\uC774 \uC7A0\uACA8 \uC788\uC2B5\uB2C8\uB2E4.
++AclEntryAfterInvocationProvider.noPermission=Authentication {0}\uC740/\uB294 domain object {1}\uC5D0 \uB300\uD55C \uAD8C\uD55C\uC774 \uC5C6\uC2B5\uB2C8\uB2E4.
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_lt.properties b/security-admin/src/main/resources/internationalization/messages_lt.properties
+new file mode 100644
+index 0000000..4799e90
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_lt.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Pri\u0117jimas neleid\u017eiamas
++AbstractSecurityInterceptor.authenticationNotFound=Authentication objektas nerastas SecurityContext kontekste
++AbstractUserDetailsAuthenticationProvider.badCredentials=Blogi kredencialai
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Pasibaig\u0117 vartotojo kredencial\u0173 galiojimas
++AbstractUserDetailsAuthenticationProvider.disabled=Vartotojas neveiksnus
++AbstractUserDetailsAuthenticationProvider.expired=Pasibaig\u0117 vartotojo paskyros galiojimas
++AbstractUserDetailsAuthenticationProvider.locked=Vartotojo paskyra u\u017erakinta
++AbstractUserDetailsAuthenticationProvider.onlySupports=Priimamas tik UsernamePasswordAuthenticationToken
++AccountStatusUserDetailsChecker.credentialsExpired=Pasibaig\u0117 vartotojo kredencial\u0173 galiojimas
++AccountStatusUserDetailsChecker.disabled=Vartotojas neveiksnus
++AccountStatusUserDetailsChecker.expired=Pasibaig\u0117 vartotojo paskyros galiojimas
++AccountStatusUserDetailsChecker.locked=Vartotojo paskyra u\u017erakinta
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_pl.properties b/security-admin/src/main/resources/internationalization/messages_pl.properties
+new file mode 100644
+index 0000000..f57d7d0
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_pl.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Dost\u0119p zabroniony
++AbstractSecurityInterceptor.authenticationNotFound=Obiekt Authentication nie zosta\u0142 odnaleziony w SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=Niepoprawne dane uwierzytelniaj\u0105ce
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Wa\u017Cno\u015B\u0107 danych uwierzytelniaj\u0105cych wygas\u0142a
++AbstractUserDetailsAuthenticationProvider.disabled=Konto u\u017Cytkownika jest wy\u0142\u0105czone
++AbstractUserDetailsAuthenticationProvider.expired=Wa\u017Cno\u015B\u0107 konta u\u017Cytkownika wygas\u0142a
++AbstractUserDetailsAuthenticationProvider.locked=Konto u\u017Cytkownika jest zablokowane
++AbstractUserDetailsAuthenticationProvider.onlySupports=Tylko UsernamePasswordAuthenticationToken jest obs\u0142ugiwany
++AccountStatusUserDetailsChecker.credentialsExpired=Wa\u017Cno\u015B\u0107 danych uwierzytelniaj\u0105cych wygas\u0142a
++AccountStatusUserDetailsChecker.disabled=Konto u\u017Cytkownika jest wy\u0142\u0105czone
++AccountStatusUserDetailsChecker.expired=Wa\u017Cno\u015B\u0107 konta u\u017Cytkownika wygas\u0142a
++AccountStatusUserDetailsChecker.locked=Konto u\u017Cytkownika jest zablokowane
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_pt_BR.properties b/security-admin/src/main/resources/internationalization/messages_pt_BR.properties
+new file mode 100644
+index 0000000..f849c79
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_pt_BR.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Acesso negado
++AbstractSecurityInterceptor.authenticationNotFound=Um objeto de autentica\u00E7\u00E3o n\u00E3o foi encontrado no SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=Usu\u00E1rio inexistente ou senha inv\u00E1lida
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=Credenciais expiradas
++AbstractUserDetailsAuthenticationProvider.disabled=Usu\u00E1rio desabilitado
++AbstractUserDetailsAuthenticationProvider.expired=Conta expirada
++AbstractUserDetailsAuthenticationProvider.locked=Conta bloqueada
++AbstractUserDetailsAuthenticationProvider.onlySupports=Somente UsernamePasswordAuthenticationToken \u00E9 suportado
++AccountStatusUserDetailsChecker.credentialsExpired=Credenciais expiradas
++AccountStatusUserDetailsChecker.disabled=Usu\u00E1rio desabilitado
++AccountStatusUserDetailsChecker.expired=Conta expirada
++AccountStatusUserDetailsChecker.locked=Conta bloqueada
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_pt_PT.properties b/security-admin/src/main/resources/internationalization/messages_pt_PT.properties
+new file mode 100644
+index 0000000..8400743
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_pt_PT.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=Acesso negado
++AbstractSecurityInterceptor.authenticationNotFound=Objecto Authentication n\u00E3o encontrado em SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=Credenciais inv\u00E1lidas
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=As credenciais do utilizador expiraram
++AbstractUserDetailsAuthenticationProvider.disabled=O utilizador est\u00E1 desactivado
++AbstractUserDetailsAuthenticationProvider.expired=A conta de utilizador expirou
++AbstractUserDetailsAuthenticationProvider.locked=A conta de utilizador est\u00E1 bloqueada
++AbstractUserDetailsAuthenticationProvider.onlySupports=Apenas UsernamePasswordAuthenticationToken \u00E9 suportado
++AccountStatusUserDetailsChecker.credentialsExpired=As credenciais do utilizador expiraram
++AccountStatusUserDetailsChecker.disabled=O utilizador est\u00E1 desactivado
++AccountStatusUserDetailsChecker.expired=A conta de utilizador expirou
++AccountStatusUserDetailsChecker.locked=A conta de utilizador est\u00E1 bloqueada
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_uk_UA.properties b/security-admin/src/main/resources/internationalization/messages_uk_UA.properties
+new file mode 100644
+index 0000000..f0ea02b
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_uk_UA.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=\u0414\u043E\u0441\u0442\u0443\u043F \u0437\u0430\u0431\u043E\u0440\u043E\u043D\u0435\u043D\u0438\u0439
++AbstractSecurityInterceptor.authenticationNotFound=\u041E\u0431'\u0454\u043A\u0442 Authentication \u043D\u0435 \u0437\u043D\u0430\u0439\u0434\u0435\u043D\u0438\u0439 \u0432 SecurityContext
++AbstractUserDetailsAuthenticationProvider.badCredentials=\u0414\u0430\u043D\u0456 \u043A\u043E\u0440\u0438\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u043D\u0435\u043A\u043E\u0440\u0435\u043A\u0442\u043D\u0456
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=\u041F\u043E\u0432\u043D\u043E\u0432\u0430\u0436\u0435\u043D\u043D\u044F \u043A\u043E\u0440\u0438\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0432\u0438\u0447\u0435\u0440\u043F\u0430\u043B\u0438 \u0442\u0435\u0440\u043C\u0456\u043D \u0434\u0456\u0457
++AbstractUserDetailsAuthenticationProvider.disabled=\u041E\u0431\u043B\u0456\u043A\u043E\u0432\u0438\u0439 \u0437\u0430\u043F\u0438\u0441 \u043A\u043E\u0440\u0443\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0437\u0430\u0431\u043E\u0440\u043E\u043D\u0435\u043D\u0438\u0439
++AbstractUserDetailsAuthenticationProvider.expired=\u041E\u0431\u043B\u0456\u043A\u043E\u0432\u0438\u0439 \u0437\u0430\u043F\u0438\u0441 \u043A\u043E\u0440\u0443\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0432\u0438\u0447\u0435\u0440\u043F\u0430\u0432 \u0442\u0435\u0440\u043C\u0456\u043D \u0434\u0456\u0457
++AbstractUserDetailsAuthenticationProvider.locked=\u041E\u0431\u043B\u0456\u043A\u043E\u0432\u0438\u0439 \u0437\u0430\u043F\u0438\u0441 \u043A\u043E\u0440\u0443\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439
++AbstractUserDetailsAuthenticationProvider.onlySupports=\u0422\u0456\u043B\u044C\u043A\u0438 UsernamePasswordAuthenticationToken \u043F\u0456\u0434\u0442\u0440\u0438\u043C\u0443\u0454\u0442\u044C\u0441\u044F
++AccountStatusUserDetailsChecker.credentialsExpired=\u041F\u043E\u0432\u043D\u043E\u0432\u0430\u0436\u0435\u043D\u043D\u044F \u043A\u043E\u0440\u0438\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0432\u0438\u0447\u0435\u0440\u043F\u0430\u043B\u0438 \u0442\u0435\u0440\u043C\u0456\u043D \u0434\u0456\u0457
++AccountStatusUserDetailsChecker.disabled=\u041E\u0431\u043B\u0456\u043A\u043E\u0432\u0438\u0439 \u0437\u0430\u043F\u0438\u0441 \u043A\u043E\u0440\u0443\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0437\u0430\u0431\u043E\u0440\u043E\u043D\u0435\u043D\u0438\u0439
++AccountStatusUserDetailsChecker.expired=\u041E\u0431\u043B\u0456\u043A\u043E\u0432\u0438\u0439 \u0437\u0430\u043F\u0438\u0441 \u043A\u043E\u0440\u0443\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0432\u0438\u0447\u0435\u0440\u043F\u0430\u0432 \u0442\u0435\u0440\u043C\u0456\u043D \u0434\u0456\u0457
++AccountStatusUserDetailsChecker.locked=\u041E\u0431\u043B\u0456\u043A\u043E\u0432\u0438\u0439 \u0437\u0430\u043F\u0438\u0441 \u043A\u043E\u0440\u0443\u0441\u0442\u0443\u0432\u0430\u0447\u0430 \u0437\u0430\u0431\u043B\u043E\u043A\u043E\u0432\u0430\u043D\u0438\u0439
+\ No newline at end of file
+diff --git a/security-admin/src/main/resources/internationalization/messages_zh_CN.properties b/security-admin/src/main/resources/internationalization/messages_zh_CN.properties
+new file mode 100644
+index 0000000..7b201a8
+--- /dev/null
++++ b/security-admin/src/main/resources/internationalization/messages_zh_CN.properties
+@@ -0,0 +1,26 @@
++# Licensed to the Apache Software Foundation (ASF) under one or more
++# contributor license agreements.  See the NOTICE file distributed with
++# this work for additional information regarding copyright ownership.
++# The ASF licenses this file to You under the Apache License, Version 2.0
++# (the "License"); you may not use this file except in compliance with
++# the License.  You may obtain a copy of the License at
++#
++#     http://www.apache.org/licenses/LICENSE-2.0
++#
++# Unless required by applicable law or agreed to in writing, software
++# distributed under the License is distributed on an "AS IS" BASIS,
++# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
++# See the License for the specific language governing permissions and
++# limitations under the License.
++AbstractAccessDecisionManager.accessDenied=\u4E0D\u5141\u8BB8\u8BBF\u95EE
++AbstractSecurityInterceptor.authenticationNotFound=\u672A\u5728SecurityContext\u4E2D\u67E5\u627E\u5230\u8BA4\u8BC1\u5BF9\u8C61
++AbstractUserDetailsAuthenticationProvider.badCredentials=\u574F\u7684\u51ED\u8BC1
++AbstractUserDetailsAuthenticationProvider.credentialsExpired=\u7528\u6237\u51ED\u8BC1\u5DF2\u8FC7\u671F
++AbstractUserDetailsAuthenticationProvider.disabled=\u7528\u6237\u5DF2\u5931\u6548
++AbstractUserDetailsAuthenticationProvider.expired=\u7528\u6237\u5E10\u53F7\u5DF2\u8FC7\u671F
++AbstractUserDetailsAuthenticationProvider.locked=\u7528\u6237\u5E10\u53F7\u5DF2\u88AB\u9501\u5B9A
++AbstractUserDetailsAuthenticationProvider.onlySupports=\u4EC5\u4EC5\u652F\u6301UsernamePasswordAuthenticationToken
++AccountStatusUserDetailsChecker.credentialsExpired=\u7528\u6237\u51ED\u8BC1\u5DF2\u8FC7\u671F
++AccountStatusUserDetailsChecker.disabled=\u7528\u6237\u5DF2\u5931\u6548
++AccountStatusUserDetailsChecker.expired=\u7528\u6237\u5E10\u53F7\u5DF2\u8FC7\u671F
++AccountStatusUserDetailsChecker.locked=\u7528\u6237\u5E10\u53F7\u5DF2\u88AB\u9501\u5B9A
+\ No newline at end of file
+-- 
+1.7.1
+
